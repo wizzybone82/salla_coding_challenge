@@ -18,8 +18,8 @@ class CreateProductsTable extends Migration
             $table->string('name')->nullable();
             $table->string('sku')->unique()->nullable();
             $table->string('status')->nullable();
-            $table->text('variations')->nullable();
-            $table->decimal('price', 7, 2)->nullable();
+            $table->json('variations')->nullable();
+            $table->decimal('price', 20, 6)->nullable();
             $table->string('currency', 20)->nullable();
             $table->string('quantity',1000)->nullable(); // Added quantity field
          
