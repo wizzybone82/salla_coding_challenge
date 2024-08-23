@@ -22,6 +22,7 @@ class CreateProductsTable extends Migration
             $table->decimal('price', 20, 6)->nullable();
             $table->string('currency', 20)->nullable();
             $table->string('quantity',1000)->nullable(); // Added quantity field
+            $table->softDeletes();
          
             $table->timestamps();
         });
