@@ -35,23 +35,23 @@ class ImportProducts extends Command
         $contents = file_get_contents(public_path('products.csv'));
         $lines = explode("\n", $contents);
 
-        array_shift($lines); // Skip the header row
+        array_shift($lines); 
 
         $i = 0;
         $processedSkus = [];
 
-        // Get all current product SKUs from the database
+        
         $existingSkus = Product::pluck('sku')->toArray();
 
         DB::transaction(function () use ($lines, &$i, &$processedSkus) {
             foreach ($lines as $line) {
-                // Use str_getcsv to correctly parse the line
+                
                 $fields = str_getcsv($line);
 
-                // Reinitialize $encodedVariations for each product
+               
                 $encodedVariations = null;
 
-                // Extract and process the fields as needed
+                
                 $productId = $fields[0];
                 $productName = $fields[1] ?? '';
                 $productSku = $fields[2] ?? null; 
@@ -61,7 +61,8 @@ class ImportProducts extends Command
 
                 if (!empty($fields[5])) {
                     if ($this->isJson($fields[5])) {
-                        $encodedVariations = $fields[5];
+                        $encodedVariations = $this->processVariations($fields[5] ?? null, $this->convertToInt($fields[6]) ?? 0);
+
                     } else {
                         $encodedVariations = NULL;
                     }
@@ -72,7 +73,7 @@ class ImportProducts extends Command
                     continue;
                 }
 
-                // Add the processed SKU to the list
+                
                 $processedSkus[] = $productSku;
 
                 if (!preg_match('/^[A-Z]{3}$/', $productCurrency)) {
@@ -93,11 +94,12 @@ class ImportProducts extends Command
 
                 $product = Product::withTrashed()->where('sku', $productSku)->first();
 
-                // Handle products flagged as deleted in the file
+                
                 if (strtolower($status) === 'deleted') {
                     if ($product) {
                         $product->status = 'deleted_due_to_sync';
                         $product->deleted_at = Carbon::now();
+                        $product->variations = $encodedVariations;
                         $product->save();
                         $this->info("Soft deleted product with SKU: {$productSku} due to deleted status in file");
                     }
@@ -119,7 +121,7 @@ class ImportProducts extends Command
             }
         });
 
-        // Identify and soft delete outdated products
+       
         $skusToDelete = array_diff($existingSkus, $processedSkus);
 
         foreach ($skusToDelete as $sku) {
@@ -140,15 +142,89 @@ class ImportProducts extends Command
         return json_last_error() === JSON_ERROR_NONE;
     }
 
+
+    /**
+     * Convert string to integer
+     *
+     * @param string $value
+     * @return int
+    */
+
+    private function convertToInt($value)
+    {
+        return (int) preg_replace('/[^0-9]/', '', $value);
+    }
+
+
+    /**
+     * Process variations based on input data
+     *
+     * @param string|null $variationsJson
+     * @param int $totalQuantity
+     * @return string|null
+    */
+
+    private function processVariations($variationsJson, $totalQuantity)
+    {
+        if (empty($variationsJson) || !$this->isJson($variationsJson)) {
+            return null;
+        }
+
+
+        $variations = json_decode($variationsJson, true);
+      
+        $variationCount = count($variations);
+
+        if ($variationCount === 0) {
+            return null;
+        }
+        $hasQuantityAndAvailability = isset($variations[0]['quantity']) && isset($variations[0]['available']);
+
+        if ($hasQuantityAndAvailability) {
+           
+            foreach ($variations as &$variation) {
+                $variation['quantity'] = $this->convertToInt($variation['quantity']);
+                $variation['available'] = filter_var($variation['available'], FILTER_VALIDATE_BOOLEAN);
+            }
+        } else {
+          
+            $variationCount = count($variations);
+            $quantityPerVariation = floor($totalQuantity / $variationCount);
+            $remainingQuantity = $totalQuantity % $variationCount;
+
+            foreach ($variations as &$variation) {
+                $variation['quantity'] = $quantityPerVariation;
+                if ($remainingQuantity > 0) {
+                    $variation['quantity']++;
+                    $remainingQuantity--;
+                }
+                $variation['available'] = ($variation['quantity'] > 0);
+            }
+        }
+
+
+
+        return json_encode($variations);
+    }
+
+
+
+    /**
+     * Convert price from string to decimal
+     *
+     * @param string $price
+     * @return float
+    */
+
     private function convertPrice($price)
     {
-        // Remove any thousand separators (assuming they're periods)
+        
         $price = str_replace('.', '', $price);
 
-        // Replace comma with dot for decimal point
+        
         $price = str_replace(',', '.', $price);
 
-        // Convert to float and round to 2 decimal places
+       
         return round((float) $price, 2);
     }
 }
