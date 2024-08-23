@@ -32,7 +32,11 @@ class ImportProducts extends Command
      */
     public function handle()
     {
+        //Switch to storage path when you want to run the unit test on ImportProductsCommand
+
         $contents = file_get_contents(public_path('products.csv'));
+
+        
         $lines = explode("\n", $contents);
 
         array_shift($lines); 
@@ -47,7 +51,6 @@ class ImportProducts extends Command
             foreach ($lines as $line) {
                 
                 $fields = str_getcsv($line);
-
                
                 $encodedVariations = null;
 
@@ -169,87 +172,56 @@ class ImportProducts extends Command
         if (empty($variationsJson) || !$this->isJson($variationsJson)) {
             return null;
         }
-
-
+    
         $variations = json_decode($variationsJson, true);
-      
         $variationCount = count($variations);
-
+    
         if ($variationCount === 0) {
             return null;
         }
+    
         $hasQuantityAndAvailability = isset($variations[0]['quantity']) && isset($variations[0]['available']);
-
+    
         if ($hasQuantityAndAvailability) {
-           
             foreach ($variations as &$variation) {
                 $variation['quantity'] = $this->convertToInt($variation['quantity']);
                 $variation['available'] = filter_var($variation['available'], FILTER_VALIDATE_BOOLEAN);
-                if(!isset($variation['color'])){
-                    $variation['color'] = null;
-                }else{
-                    $variation['color'] = $variation['color'];
-                }
-
-                if(!isset($variation['material'])){
-                    $variation['material'] = null;
-                }else{
-                    $variation['material'] = $variation['material'];
-                }
-
-                if(!isset($variation['additional_price'])){
-                    $variation['additional_price'] = 0;
-                }else{
-                    $variation['additional_price'] = $variation['additional_price'];
-                }
+                $variation['color'] = $variation['color'] ?? null;
+                $variation['material'] = $variation['material'] ?? null;
+                $variation['additional_price'] = $variation['additional_price'] ?? 0;
             }
         } else {
-          
-            $variationCount = count($variations);
-            $quantityPerVariation = floor($totalQuantity / $variationCount);
-            $remainingQuantity = $totalQuantity % $variationCount;
-
-            foreach ($variations as &$variation) {
-                $variation['quantity'] = $quantityPerVariation;
-                if ($remainingQuantity > 0) {
-                    $variation['quantity']++;
-                    $remainingQuantity--;
+            // Check if any variation has a quantity key with a non-null, non-empty value
+            $allVariationsHaveQuantity = array_reduce($variations, function ($carry, $variation) {
+                return $carry && isset($variation['quantity']) && $variation['quantity'] !== null && $variation['quantity'] !== '';
+            }, true);
+    
+            if (!$allVariationsHaveQuantity) {
+                $quantityPerVariation = floor($totalQuantity / $variationCount);
+                $remainingQuantity = $totalQuantity % $variationCount;
+    
+                foreach ($variations as &$variation) {
+                    if (!isset($variation['quantity']) || $variation['quantity'] === null || $variation['quantity'] === '') {
+                        $variation['quantity'] = $quantityPerVariation;
+                        if ($remainingQuantity > 0) {
+                            $variation['quantity']++;
+                            $remainingQuantity--;
+                        }
+                    } else {
+                        $variation['quantity'] = $this->convertToInt($variation['quantity']);
+                    }
+    
+                    $variation['available'] = $variation['quantity'] > 0;
+                    $variation['color'] = $variation['color'] ?? null;
+                    $variation['material'] = $variation['material'] ?? null;
+                    $variation['additional_price'] = $variation['additional_price'] ?? 0;
                 }
-                if($variation['quantity'] > 0){
-                    $variation['available'] = ($variation['quantity'] > 0);
-                }else{
-                    $variation['available'] = false;
-                }
-
-                if(!isset($variation['color'])){
-                    $variation['color'] = null;
-                }else{
-                    $variation['color'] = $variation['color'];
-                }
-
-                if(!isset($variation['material'])){
-                    $variation['material'] = null;
-                }else{
-                    $variation['material'] = $variation['material'];
-                }
-
-                if(!isset($variation['additional_price'])){
-                    $variation['additional_price'] = 0;
-                }else{
-                    $variation['additional_price'] = $variation['additional_price'];
-                }
-
-
-
-
-               
             }
         }
-
-
-
+    
         return json_encode($variations);
     }
+    
 
 
 

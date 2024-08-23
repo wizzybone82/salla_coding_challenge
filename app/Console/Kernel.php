@@ -9,6 +9,9 @@ use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
 class Kernel extends ConsoleKernel
 {
+
+    //* * * * * cd /path-to-your-project && php artisan schedule:run >> /dev/null 2>&1
+
     /**
      * The Artisan commands provided by your application.
      *
