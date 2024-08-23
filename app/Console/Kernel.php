@@ -3,6 +3,7 @@
 namespace App\Console;
 
 use App\Console\Commands\ImportProducts;
+use App\Console\Commands\SyncExternalProducts;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -15,6 +16,7 @@ class Kernel extends ConsoleKernel
      */
     protected $commands = [
         ImportProducts::class,
+        SyncExternalProducts::class
     ];
 
     /**
@@ -27,6 +29,8 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')
         //          ->hourly();
+
+        $schedule->command('products:sync-external')->dailyAt('00:00');
     }
 
     /**

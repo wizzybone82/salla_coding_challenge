@@ -185,6 +185,23 @@ class ImportProducts extends Command
             foreach ($variations as &$variation) {
                 $variation['quantity'] = $this->convertToInt($variation['quantity']);
                 $variation['available'] = filter_var($variation['available'], FILTER_VALIDATE_BOOLEAN);
+                if(!isset($variation['color'])){
+                    $variation['color'] = null;
+                }else{
+                    $variation['color'] = $variation['color'];
+                }
+
+                if(!isset($variation['material'])){
+                    $variation['material'] = null;
+                }else{
+                    $variation['material'] = $variation['material'];
+                }
+
+                if(!isset($variation['additional_price'])){
+                    $variation['additional_price'] = 0;
+                }else{
+                    $variation['additional_price'] = $variation['additional_price'];
+                }
             }
         } else {
           
@@ -198,7 +215,34 @@ class ImportProducts extends Command
                     $variation['quantity']++;
                     $remainingQuantity--;
                 }
-                $variation['available'] = ($variation['quantity'] > 0);
+                if($variation['quantity'] > 0){
+                    $variation['available'] = ($variation['quantity'] > 0);
+                }else{
+                    $variation['available'] = false;
+                }
+
+                if(!isset($variation['color'])){
+                    $variation['color'] = null;
+                }else{
+                    $variation['color'] = $variation['color'];
+                }
+
+                if(!isset($variation['material'])){
+                    $variation['material'] = null;
+                }else{
+                    $variation['material'] = $variation['material'];
+                }
+
+                if(!isset($variation['additional_price'])){
+                    $variation['additional_price'] = 0;
+                }else{
+                    $variation['additional_price'] = $variation['additional_price'];
+                }
+
+
+
+
+               
             }
         }
 
